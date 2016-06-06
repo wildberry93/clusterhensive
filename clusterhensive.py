@@ -12,24 +12,25 @@ import glob, os
 
 import random_colors
 
-PFAM_IDS = ["AHH", "Colicin-DNase", "DUF1524", "DUF968", "Endonuclea_NS_2", "Endonuclease_1", 
-	    "Endonuclease_7", "Endonuclease_NS", "GH-E", "HNH", "HNH_2", "HNH_3", "HNH_4",
-	    "HNH_5", "HNHc_6", "ICEA", "LHH", "MH1", "NinG", "RecA_dep_nuc", "WHH", "zf-His_Me_endon", 
-	    "Tox-HNH-EHHH","Tox-HNH-HHH","DUF1364","Tox-SHH", "RE_Alw26IDE"]
+PFAM_IDS = ["HNH","Endonuclease_NS","MH1","HNH_2","HNH_5","DUF1524","Endonuclease_1","HNH_3",
+			"HNH_4","Endonuclea_NS_2","AHH","Endonuclease_7","WHH","Colicin-DNase","NinG",
+			"HNHc_6","LHH","DUF968","zf-His_Me_endon","GH-E","RecA_dep_nuc","ICEA","RE_Alw26IDE",
+			"DUF1364","Tox-SHH","Tox-HNH-EHHH","Tox-HNH-HHH","Tox-GHH","Tox-GHH2","DFF40"]
 
-PFAM_IDS_2 = ["PF01844","PF01223","PF03165","PF13391","PF14279","PF07510","PF04231","PF13392","PF13395",
-	      "PF13930","PF14412","PF02945","PF14414","PF12639","PF05766","PF16784","PF14411",
-	      "PF06147","PF05551","PF14410","PF16786","PF05315", "PF09665"]
+PFAM_IDS_2 = ["PF01844","PF01223","PF03165","PF13391","PF14279","PF07510","PF04231","PF13392",
+			"PF13395","PF13930","PF14412","PF02945","PF14414","PF12639","PF05766","PF16784",
+			"PF14411","PF06147","PF05551","PF14410","PF16786","PF05315","PF09665","PF07102",
+			"PF15652","PF15657","PF15637","PF15636","PF15635","PF09230"]
  
-gis_dir = "gis"
+TM_RES = "helices.txt"
+gis_dir = "/home/jagoda/Desktop/annotation_test/gis_old"
 WORKING_DIR = "."
-all_seqs_file = "all_seqs_5_70_nolimits.fas"
 pdb_mappings = "pdb_mapping.txt" # niefiltrowane przez GRDB
 whole_seqs = "hits_round_2_70_ws.fas"
 ws_pfam_mapping = "hits_round_2_70_ws_pfam.txt"
 pfam_mapping = "hits_round_2_70_pfam_mapping_wholegis.txt"
-cog_mapping = "all_seqs_5_70_cog_mapping.txt"
-kog_mapping = "all_seqs_5_70_kog_mapping.txt"
+cog_mapping = "hits_round_2_70_kog_results.txt"
+kog_mapping = "hits_round_2_70_cog_results.txt"
 gis_with_limits = os.path.join(WORKING_DIR, "all_seqs_5_70_gis_limits.txt")
 final_cluster_dir = "/home/jagoda/Desktop/annotation_test"
 limits = "hits_round_2_70_gis_and_limits.txt"
@@ -39,12 +40,15 @@ EASY_GO = os.path.join(WORKING_DIR, "gene_ontology.txt")
 taxonomy_file = "taxonomy_round_2.txt"
 PROTEIN_NAMES = "protein_names.txt"
 FUNCTIONS = "domains_list.txt"
+ALL_SEQS = "hits_round_2.fas"
+seqs_70 = "hits_round_2_70_nolimits.fas"
 
 
 def get_gis_dict(gis_dir):
 	"""
 	Make gis dict in the following format cl_name:[gis_list]
 	"""
+	
 	gis_dict = {}
 	clusters = glob.glob(os.path.join(gis_dir,"*.txt"))
 	for cl in clusters:
@@ -54,6 +58,7 @@ def get_gis_dict(gis_dir):
 		for gi in gis_list:
 			stripped.append(gi.rstrip())
 		gis_dict[cl_name] = stripped
+
 	
 	return gis_dict
 
@@ -82,6 +87,7 @@ def get_taxonomy_count(taxonomy_file, gis_dict):
 	Get taxonomy counts for every cluster.
 	GI   taxa_name
 	Draw a piechart
+	Podac all_gis jezeli chce dla wszystkich sekwencji.
 	"""
 	taxonomies = open(taxonomy_file, "r").read().splitlines()
 	dir_path = os.path.join(WORKING_DIR, "taxonomy")
@@ -153,6 +159,7 @@ def domain_architectures(ws_pfam_mapping, gi_dict):
 	Determine domain architectures for every seq.
 	"""
 	pfam_results = get_gi2pfams(ws_pfam_mapping)
+
 	dir_path = os.path.join(WORKING_DIR, "architectures")
 	
 	if not os.path.exists(dir_path):
@@ -164,10 +171,10 @@ def domain_architectures(ws_pfam_mapping, gi_dict):
 		for gi in gi_dict[cluster]:
 			if gi in pfam_results:
 				out = pfam_results[gi]
+				out.insert(0,gi)
 				clusters_domains[cluster].append(out)
 	
-	#return clusters_domains
-	return filter_archs(clusters_domains)#,clusters_domains
+	return filter_archs(clusters_domains)
 	
 def get_all_archs(unfiltered_dict):
 	all_archs = {}
@@ -190,9 +197,11 @@ def filter_archs(clusters_domains):
 		repeated = {}
 		final_archs[cluster] = []
 		for architectures in clusters_domains[cluster]:
+			#print cluster + "\t"
+			#print architectures
 			if tuple(set([x[2] for x in architectures])) not in repeated:
 				final_archs[cluster].append(architectures)
-			if tuple(set([x[2] for x in architectures])) not in repeated:
+			#if tuple(set([x[2] for x in architectures])) not in repeated:
 				repeated[tuple(set([x[2] for x in architectures]))] = 0
 			repeated[tuple(set([x[2] for x in architectures]))] += 1
 		
@@ -256,7 +265,7 @@ def get_gi2pfams(file, evalue_thresh=1e-5, max_overlap=0.5):
 	"""
 	Whole sequences pfam scan results.
 	"""
-        gi2pfams = {}
+    	gi2pfams = {}
 	gis2limits = map2limits(limits)
 	gis = []
 	
@@ -336,20 +345,87 @@ def map2colors(gi_dict, n_clusters=51):
 
 	outfile.close()	
 
+def add_tmhs(arch_dict):
+	tmres = open(TM_RES, "r").read().splitlines()
+	
+	tms = {}
+	
+	for line in tmres:
+		if line.split()[0] not in tms:
+			tms[line.split()[0]] = []
+		tms[line.split()[0]].append((float(line.split()[1]), float(line.split()[2])))
+		
+	new_archs = {}
+	
+	for cluster in arch_dict:
+		new_archs[cluster] = []
+		for arch in arch_dict[cluster]:
+			 if arch[0] in tms: # jezeli w danej architekturze jest tmh
+			 	new_arch = []
+			 	for tm in tms[arch[0]]: # moze byc wiecej helis dla danego gi
+			 		jest = False		
+			 		for el in arch[1:-1]: # dla kazdej domeny w architekturze
+						over = overlap((tm[0], tm[1]), (el[0], el[1]))
+						if over > 0:
+							jest = True
+							new_domain = (el[0], el[1], el[2]+"*", el[3])
+							new_arch.append(new_domain)
+							break #nie szukaj dalej
+							
+						else:
+							new_domain = el
+							new_arch.append(new_domain)
+							
+					if jest == False:
+						helix = (tm[0], tm[1], "transhelix", "TMH")
+						new_arch.append(helix)
+						
+					#new_arch.append(new_domain)
+				
+				new_nn_arch = list(set(new_arch))
+				new_nn_arch.insert(0, arch[0])
+				new_nn_arch.append(arch[-1])
+				new_archs[cluster].append(new_nn_arch)
+										
+			 else:
+			 	new_archs[cluster].append(arch)
+	
+	return sort_domains_by_coordinates(new_archs)
+
+def sort_domains_by_coordinates(arch_dict):
+	"""
+	Sorts architectures by domain coordinates, eg. (23,27,DEAD) 
+	"""
+	new_dict = {}
+	
+	for cluster in arch_dict:
+		new_dict[cluster] = []
+		for architecture in arch_dict[cluster]:
+			arch = architecture[1:-1] # wez podzbior domen bez zliczen i gi'ow
+			new_arch = sorted(arch, key=lambda tup: tup[0])
+			new_arch.append(architecture[-1])
+			new_arch.insert(0, architecture[0])
+			
+			new_dict[cluster].append(new_arch)
+	print new_dict
+	return new_dict
+			
+			
 def draw_architectures(arch_dict):
 	"""
 	Draw domain architectures using matplotlib.
 	"""
-	z = 0.3 #fixed width
-	c = 0.1 #fixed height
-
+	z = 2 #fixed width
+	c = 1 #fixed height
+	pdf = PdfPages("rysunki/output.pdf")
 	colors = functions2colors()
 
+
 	for cluster in arch_dict:
+
 		num_domains = len(arch_dict[cluster])
 		max_len = max([len(x) for x in arch_dict[cluster]])
-		fig6 = plt.figure()
-		ax6 = fig6.add_subplot(111, aspect='equal')
+		
 		y = 0
 		id = 100000
 
@@ -363,9 +439,13 @@ def draw_architectures(arch_dict):
 					lefts.append(float(id))
 					rights.append(float(len(arch[id:])))
 
-		middle = (min(lefts)+max(rights))/2+0.5
-		left = min(lefts)
+		middle = (min(lefts)+max(rights))/2-1
+		left = max(lefts)
 		right = max(rights)
+		
+		fig6 = plt.figure(figsize=(left+right,num_domains))
+		ax6 = fig6.add_subplot(111, aspect='equal')
+		
 		# Get ID of His-Me domain
 		for arch in arch_dict[cluster]:
 			
@@ -373,52 +453,50 @@ def draw_architectures(arch_dict):
 				if dom[2] == "His-Me":
 					id = i
 
-			print "left",left
-			print "right",right
-			
 			#middle = (left+right)/2+0.5
-			print "middle", middle
+		
 			ax6.add_patch(patches.Rectangle((middle,y),z,c,facecolor="lightgrey",linewidth=0))
 			
 			ax6.text(0.5*(middle+middle+z), 0.5*(y+y+c), 'His-Me',
         			horizontalalignment='center', verticalalignment='center',
-        			fontsize=4, color='black')
-			x = middle-0.5
-			for domain in arch[:id]:
+        			fontsize=7, color='black')
+			x = middle-2.25
+			for domain in arch[1:id]:
 				ax6.add_patch(patches.Rectangle((x,y),z,c,facecolor=colors[domain[3]],linewidth=0))
 				
 				ax6.text(0.5*(x+x+z), 0.5*(y+y+c), domain[2],
         			horizontalalignment='center', verticalalignment='center',
-        			fontsize=4, color='black')
+        			fontsize=7, color='black')
         			
-				x-=0.3
+				x-=2.25
 
-			x = middle+0.5
+			x = middle+2.25
 			for domain in arch[id+1:-1]:
 				ax6.add_patch(patches.Rectangle((x,y),z,c,facecolor=colors[domain[3]],linewidth=0))
 				
 				ax6.text(0.5*(x+x+z), 0.5*(y+y+c), domain[2],
         			horizontalalignment='center', verticalalignment='center',
-        			fontsize=4, color='black')
+        			fontsize=7, color='black')
 				
-				x+=0.3			
+				x+=2.25		
 
 			# dodaj zliczenie
-			ax6.text(0.49*(x+x+z), 0.5*(y+y+c), arch[-1],
+			ax6.text(0.5*(x+x+z)-0.8, 0.5*(y+y+c), arch[-1],
         			horizontalalignment='center', verticalalignment='center',
-        			fontsize=5, color='black')
-			y+=0.1
+        			fontsize=9, color='black')
+			y+=1.25
 			
 
-		plt.ylim([0,num_domains*0.1])
-		plt.xlim([left,right])
+		plt.ylim([0,num_domains+0.25*(num_domains)])
+		plt.xlim([-left*2-0.5,(right*2)+0.7])
 		plt.axis('off')
 		#plt.subplots_adjust(left=0.001, right=0.002, top=0.002, bottom=0.001)
-		#plt.savefig("domains_poster.pdf", format='pdf')
+		fig6.tight_layout()
+		plt.savefig("rysunki/"+cluster+".pdf", format='pdf',bbox_inches='tight')
+		#pdf.savefig(fig6)
+		#fig6.savefig("rysunki/"+cluster+'.png', dpi=300, bbox_inches='tight')	
 
-		fig6.savefig(cluster+'.png', dpi=150, bbox_inches='tight')	
-
-	#pp.close()
+	pdf.close()
 	
 def domains2file(arch_dict):
 	"""
@@ -455,6 +533,10 @@ def get_all_sequences(clusters_file, gis_dict):
 	Get gis of ALL sequences (not 70%) 
 	"""
 	cd_hits = open(clusters_file, "r").readlines()
+	seq_dir = "all_sequences"
+
+	if not os.path.exists(seq_dir):
+		os.mkdir(seq_dir)
 
 	cl_dict = {}
 	lst = []
@@ -477,12 +559,24 @@ def get_all_sequences(clusters_file, gis_dict):
 				cl_rep = ""
 
 			else:
-				lst.append(line.split()[2][:-3].split("_")[0][1:])
+				if "_" in line.split()[2][:-3]:
+					lst.append(line.split()[2][:-3].split("_")[0][1:])
+				else:
+					lst.append(line.split()[2][1:-3])
+
 				if line.split()[3] == "*":
-				        cl_rep = line.split()[2][:-3].split("_")[0][1:]
+					if "_" in line.split()[2][:-3]:
+				        	cl_rep = line.split()[2][:-3].split("_")[0][1:]
+				    	else:
+				    		cl_rep = line.split()[2][1:-3]
 
-		all_gis[cluster] = all_cl_gis
+		all_gis[cluster] = list(set(all_cl_gis))
 
+	for cl in all_gis:
+		fh = open(os.path.join(seq_dir,cl+".txt"),"w")
+		fh.write("\n".join(all_gis[cl]))
+		fh.close()
+			
 	return all_gis
 
 def get_pfam_mapping(gis_dict, pfam_mapping_file):
@@ -542,10 +636,10 @@ def get_cog_mapping(cog_file, kog_file, gis_dict):
 	kog_dict = {}
 
 	for ln in cog:
-		cog_dict[ln.split()[0]] = ln.split()[1]
+		cog_dict[ln.split()[0]] = ln.split()[1].split("|")[2]
 	
 	for ln2 in kog:
-		kog_dict[ln2.split()[0]] = ln2.split()[1]
+		kog_dict[ln2.split()[0]] = ln2.split()[1].split("|")[2]
 
 	cluster2cog = {}
 	cluster2kog = {}
@@ -656,7 +750,8 @@ def domains2colors():
 	"""
 	Map PFAM domains to colors
 	"""
-	domains_list = open("pfam_domains.txt", "r").read().splitlines()
+	#domains_list = open("pfam_domains.txt", "r").read().splitlines()
+
 	colors =  random_colors.generate_N_pastels(len(domains_list))
 	
 	domains_col = {}
@@ -664,6 +759,34 @@ def domains2colors():
 	for col, domain in zip(colors,domains_list):
 		domains_col[domain] = col
 	
+	return domains_col
+
+def pfams2colors():
+	"""
+	Map PFAM domains to colors
+	"""
+	#domains_list = open("pfam_domains.txt", "r").read().splitlines()
+
+	colors =  random_colors.generate_N_pastels(len(PFAM_IDS_2))
+	
+	domains_col = {}
+	
+	for col, domain in zip(colors,PFAM_IDS):
+		domains_col[domain] = col
+	
+
+	names_mapping = open("pfamnames_mapping.txt", "w")
+
+	for id,name in zip(PFAM_IDS_2,PFAM_IDS):
+			names_mapping.write(id+"\t"+name+"\n")
+	names_mapping.close()
+
+	pfam2color = open("pfam_color_mapping.txt", "w")
+
+	for domain in domains_col:
+		pfam2color.write(domain+"\t"+domains_col[domain]+"\n")
+	pfam2color.close()
+
 	return domains_col
 
 def functions2colors():
@@ -709,18 +832,21 @@ def get_colors_legend(fun2color):
 		
 			ax6.text(0.5*(3+10+z), 0.5*(y+y+c), fun,
 					horizontalalignment='center', verticalalignment='center',
-	        		fontsize=3, color='black')
+	        		fontsize=5, color='black')
 
 			y+=0.8
+
 		plt.ylim([0,35])
 		plt.xlim([0,30])
 		plt.axis('off')
-		plt.savefig("function_legend.pdf", format='pdf')
+		plt.savefig("pfam_legend.pdf", format='pdf')
 
 		#fig6.savefig('legend.png', dpi=700, bbox_inches='tight')	
 
 def get_protein_names(gi_dict, names_list):
 	names = open(names_list, "r").read().splitlines()
+	names_dir = "protein_names"
+	os.mkdir("protein_names")
 	cl2protein = {}
 	
 	names_dict = {}
@@ -736,7 +862,7 @@ def get_protein_names(gi_dict, names_list):
 				except: pass
 				
 	for cluster in cl2protein:
-		fn = open(cluster+"_protnames.txt", "w")
+		fn = open(os.path.join(names_dir,cluster+"_protnames.txt"), "w")
 		for gi in cl2protein[cluster]:
 			fn.write(gi+"\n")
 		fn.close()		
@@ -756,22 +882,33 @@ def clusters2ws_proteins(gi_dict):
 		fh.close()
 
 def clusters2taxonomy(gis_dict):
-	taxfile = open("taxonomy_round_2.txt", "r").read().splitlines()
+	"""
+	Saves 'gi   taxa' file as well!
+	"""
+	taxfile = open("taxonomy_round_2_2.txt", "r").read().splitlines()
 	tax_dict = {}
-	
+	tax_dir = "taxonomy_2"
+
+	if not os.path.exists(tax_dir):
+		os.mkdir(tax_dir)
+
 	for tax in taxfile:
 		gi = tax.split()[0]
 		taxa = tax.split()[1]
 		tax_dict[gi] = taxa
 	
 	for cluster in gis_dict:
-		fh = open(cluster+"_taxa.txt","w")
+		fh2 = open(os.path.join(tax_dir,cluster+"_all_taxa.txt"),"w")
+		fh = open(os.path.join(tax_dir,cluster+"_taxa.txt"),"w")
 		list_tax = []
 		for gi in gis_dict[cluster]:
 			try:
 				list_tax.append(tax_dict[gi])
+				fh2.write(gi+"\t"+tax_dict[gi]+"\n")
 			except: pass
 		counts = Counter(list_tax)
+		fh2.close()
+		
 		for count in counts:
 			fh.write(count+"\t"+str(counts[count])+"\n")
 		fh.close()
@@ -813,9 +950,9 @@ if __name__ == "__main__":
 	#unfiltered_doms = domain_architectures(ws_pfam_mapping, gi_dict)
 	#stats = domain2stats(unfiltered_doms)
 	#get_protein_names(gi_dict, PROTEIN_NAMES)
-	
+	#get_all_sequences(cd_hits,gi_dict)
 	#clusters2ws_proteins(gi_dict)
-	#clusters2taxonomy(gi_dict)
+
 	#cluster2organism2pfam(gi_dict)
 	#do rysowania najczestszych na posterze
 	'''all = get_all_archs(unfiltered_doms)
@@ -827,22 +964,30 @@ if __name__ == "__main__":
 	draw_architectures(to_draw)'''
 	
 	#domains2file(unfiltered_doms)
-	#doms2 = remove_repeats(doms)
-	draw_architectures(doms)
+	doms2 = remove_repeats(doms)
+	with_tmhs = add_tmhs(doms2)
+	draw_architectures(with_tmhs)
+
 	#get_taxonomy_count(taxonomy_file,gi_dict)
 	#domains2graph_all(doms)
 	#domains2GOmap(doms, "process")
 	#all_gis = get_all_sequences(cd_hits, gi_dict)
+	#clusters2taxonomy(all_gis)
 	#pfams = get_pfam_mapping(gi_dict, pfam_mapping)	
 	#pdbs = get_pdb90(all_gis, pdb_mappings)
-	#cog, kog = get_cog_mapping(gi_dict, cog_mapping, gi_dict)
+	#cog, kog = get_cog_mapping(cog_mapping, kog_mapping, gi_dict)
 	#make_table(pdbs, pfams, cog, kog)
 
 	#cluster2map(gi_dict)
 	
 	#filter_archs(doms)
 	#map2limits(limits)
-	#map2colors(gi_dict)	
-	#gather_sequences(all_seqs_file, gi_dict)
+	#map2colors(gi_dict)
+	#all_seqs_file = "all_sequences_to_cluster.fas"
+	
+	#gather_sequences(seqs_70, gi_dict)
+
 	#run_mafft()
 
+	#cols = pfams2colors()
+	#get_colors_legend(cols)
